@@ -415,6 +415,11 @@ then
     then
         echo "An error occurred, please view the $errorlog file."
     fi
+
+    if [ $? -eq 0 ]
+    then
+        echo "System upgrade complete"
+    fi
 fi
 
 if grep -q "debian" $release_file || grep -q "ubuntu" $release_file
@@ -429,6 +434,11 @@ then
         if [ $? -ne 0 ]
     then
         echo "An error occurred, please view the $errorlog file."
+    fi
+
+    if [ $? -eq 0 ]
+    then
+        echo "System upgrade complete"
     fi
 
 fi
@@ -456,3 +466,278 @@ echo "Please enter name"
 read myname
 echo "User's name is $myname"
 ```
+
+* * *
+## **FUNCTIONS**
+- So we use these to consolidate our scripts and reduce redundancy.
+- Lets use our previous script:
+
+```
+  #!/bin/bash
+
+release_file=/etc/os-release
+logfile=/var/log/update.log
+errorlog=/var/log/update_errors.log
+
+if grep -q "arch" $release_file
+then
+    #this is based on Arch distro
+    sudo pacman -Syu 1>> $logfile 2>> $errorlog
+    if [ $? -ne 0 ]
+    then
+        echo "An error occurred, please view the $errorlog file."
+    fi
+
+    if [ $? -eq 0 ]
+    then
+        echo "System upgrade complete"
+    fi
+fi
+
+if grep -q "debian" $release_file || grep -q "ubuntu" $release_file
+then
+    # this is based on Debian / Ubuntu
+    sudo apt update 1>> $logfile 2>> $errorlog
+        if [ $? -ne 0 ]
+    then
+        echo "An error occurred, please view the $errorlog file."
+    fi
+    sudo apt full-upgrade 1>> $logfile 2>> $errorlog
+        if [ $? -ne 0 ]
+    then
+        echo "An error occurred, please view the $errorlog file."
+    fi
+
+    if [ $? -eq 0 ]
+    then
+        echo "System upgrade complete"
+    fi
+
+fi
+```
+
+- **UPDATED SCRIPT**
+
+
+```
+
+#!/bin/bash
+
+release_file=/etc/os-release
+logfile=/var/log/update.log
+errorlog=/var/log/update_errors.log
+
+check_exit_status() {
+    if [ $? -ne 0 ]
+    then
+        echo "An error occurred, please view the $errorlog file."
+    fi
+}
+
+success() {
+    if [ $? -q 0]
+    then
+        echo "System upgrade complete"
+    fi
+}
+
+
+if grep -q "arch" $release_file
+then
+    #this is based on Arch distro
+    sudo pacman -Syu 1>> $logfile 2>> $errorlog
+    check_exit_status
+    success
+    
+fi
+
+if grep -q "debian" $release_file || grep -q "ubuntu" $release_file
+then
+    # this is based on Debian / Ubuntu
+    sudo apt update 1>> $logfile 2>> $errorlog
+    check_exit_status
+
+    sudo apt full-upgrade -y 1>> $logfile 2>> $errorlog
+    check_exit_status
+    success    
+fi
+```
+- So our new functions are ***check_exit_status*** and ***success*** which are initialized /declare with a set of parantheses followed by curly braces.
+- These functions hosts our if statements that would have been  repeated multiple times in our previous script.
+- So instead of repeatedly running the same command all over our script, we just call the function.
+- **Advantages of functions are**:
+     - Improves efficiency as if you want to edit a command you just edit it in the function that holds it.
+	 - Reduces redundancy hence the script becomes cleaner.
+
+* * *
+## **CASE STATEMENTS**
+```
+
+#!/bin/bash
+
+finished=0
+
+while [ $finished -ne 1 ]
+do
+  echo "Enter numerical digits only"
+  echo "What is your favorite linux distribution"
+  echo "1 - Arch"
+  echo "2 - CentOS"
+  echo "3 - Mint"
+  echo "4 - Ubuntu"
+  echo "5 - Debian"
+  echo "6 - Something else..."
+  echo "7 - Exit the script."
+
+  read distro;
+
+#case statement
+  case $distro in
+      1) echo "Arch is a rolling release.";;
+      2) echo "CentOs is popular on servers.";;
+      3) echo "Mint is popular on desktops and laptops";;
+      4) echo "Ubuntu is popular on both servers and computers";;
+      5) echo "Oooh a bit of a hacker are you!";;
+      6) echo "THere are many distributions out there.";;
+      7) finished=1 ;;
+      *) echo "You didn't enter an appropriate choice.";;
+       
+  esac
+done
+```
+
+- So this is a basic example of a case statement ignoring the while loop that hosts it.
+- We initialize/declare it using the word **case** where we use the variable **distro**.
+- So a case statement is used to execute commands based on a chosen item from an array.
+- Notice each line in the case statement ends with two semi-colons , without them , the case statement won't work.
+- To exit a case statement you type case in reverse - **esac**.
+- So we incorporated the case statement in a while loop just to show how different items interact in bash scripting.
+- So this script will continue to execute till you choose to exit it yourself.
+- We set a variable **finished** to 0 to enable our while loop.
+
+* * *
+## **SCHEDULING JOBS**
+- So we can schedule our scripts to run at a later time in different ways.
+- First method we can use is with ***at*** .
+- Check if you have at:
+```
+which at
+```
+- if not , install:
+```
+sudo apt install at
+```
+- So the scheddling syntax:
+```
+at <time> -f <script>
+```
+- Example:
+```
+at 14:00 -f ./myscript.sh
+```
+
+- We can also schedule further in the future i.e
+```
+at 12:00 090126 -f ./myscript.sh
+
+```
+- You can check for the jobs waiting to be executed by:
+```
+atq
+```
+- Example of an ouput:
+![Screenshot from 2026-08-05 15-23-19.png](../_resources/Screenshot%20from%202026-08-05%2015-23-19.png)
+- **3** is the job id/no.
+- To delete a job :
+```
+atrm <id>
+```
+- Example:
+```
+atrm 3
+```
+
+* * *
+## **ARGUMENTS**
+- Are values passed to a script when you run it.
+
+**POSITIONAL PARAMETERS**
+- Each argument is stored in a numerical variable.
+- Example:
+**PARAMETER**
+```
+ $0 - script name
+ $1-$9 - postional arguments
+ $# - number of arguments
+ $@ - all arguments , all kept separate
+ ```
+- Example in a script:
+```#!/bin/bash
+
+echo "Script Name : $0"
+echo "First Name  : $1"
+echo "Age         : $2"
+echo "City        : $3"
+```
+- To run this :
+```
+./arg.sh Jeff 20 Nairobi
+```
+- Expected output:
+
+![ARG.png](../_resources/ARG.png)
+
+## **BACKUP SCRIPT**
+
+- So this is a real use case of a script to back up files.
+```
+#!/bin/bash
+
+#Checking to see if the user has enteres exactly two arguments.
+
+if [ $# -ne 2 ]
+then 
+    echo "Usage: backup.sh <source_directory> <target_directory>"
+    echo "Try again:"
+    exit 1
+
+fi
+
+#Check to see if rsync is installed
+
+if ! command -v rsync > /dev/null  2>&1
+then 
+    echo "This script requires rsync to be installed"
+    echo "Please use your distribution's package manager to install it and try again"
+    exit 2
+ fi
+ 
+ #Capture the current date and  store it in the format YYYY-MM-DD
+
+current_date=$(date +%F)
+
+#Backing up files
+
+rsync_options="-avb --backup-dir $2/$current_date --delete "
+
+$(which rsync) $rsync_options $1 $2/current >> backup_$current_date.log
+
+```
+
+- So first this script checks two see if two arguments are , entered then if **rsync** is installed .
+- So for the main backup part:
+   - **-avb**
+       - **a** - preserves the files' metadate i.e permissions, timestamp , owner
+	   - **v** - show files transferred
+	   - **b** - creates a directory for files that are going to be overwritten.
+	   - **-h** - Human-readable file sizes
+       - **--progress** - Display transfer progress
+       - **--dry-run** - Preview changes without making them
+	- **--backup-dir**
+	   - Tells rsync to store backup files to a different directory than the overwritten files.
+
+- Rsync will then create a sub-directory **current_date** that is also a variable under the target destination for all files that are about to be deleted or overwritten.
+   - **--delete** then ensures that **destination** directory is a clone of the **source** directory i.e if a file exists in the destination that is no longer in the source , delete it.
+    - **--dry-run** allows this script to run without actually execute it to ilustrate how the script would actually behave.This allows us to polish , edit and countercheck our script.
+    - **$(which rsync)** - allows the script to run the actual fully qualified command.
+- The files are then backed up into a sub-directory under the destination in the file backup_$current_date.log.
